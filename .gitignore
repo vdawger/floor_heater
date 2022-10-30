@@ -2,3 +2,5 @@
 src/secrets.py
 src/*.ini
 archive_old/
+*.pyc
+src/*.pyc
