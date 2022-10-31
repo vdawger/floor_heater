@@ -1,6 +1,7 @@
 # Complete project details at https://RandomNerdTutorials.com
  
 import time
+import machine
 
 import network
 
@@ -46,8 +47,12 @@ if station.isconnected() == False:
     time.sleep(1)
 
 def download_and_install_update_if_available():
-    o = OTAUpdater(secrets.url)
-    o.install_update_if_available_after_boot(ssid, password)
+  print("checking for update from: ", secrets.url)
+  o = OTAUpdater(secrets.url)
+  if o.check_for_update_to_install_during_next_reboot() == True:
+    print("found new update. resetting.")
+    machine.reset()
+  o.install_update_if_available_after_boot(ssid, password)
 
 if station.isconnected() == True:
   print('Connection successful to: ' + str(ssid) )
