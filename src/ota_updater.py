@@ -88,6 +88,7 @@ class OTAUpdater:
         return False
 
     def _check_for_new_version(self):
+        print("main_dir:" + str(self.main_dir) )
         current_version = self.get_version(self.modulepath(self.main_dir))
         latest_version = self.get_latest_version()
 
