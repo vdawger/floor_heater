@@ -23,28 +23,14 @@ from ota_updater import OTAUpdater
 
 station = network.WLAN(network.STA_IF)
 
-# try to connect to phone wifi first for 5 seconds:
-print("trying to connect to phone hotspot first.")
+# try to connect to bus  wifi first:
+print("trying to connect to bus  hotspot first.")
 station.active(True)
 startTime = time.time()
-station.connect(secrets.ssid, secrets.password)
-ssid = secrets.ssid
-password = secrets.password
+station.connect(secrets.bu_ssid, secrets.bu_password)
 while startTime + 9 > time.time() and station.isconnected() == False:
-  print( str( time.time() - startTime))
+  print( str(startTime - time.time( )   ))
   time.sleep(1)
-
-# if unable to connect to phone wifi, then connect to bus wifi:
-if station.isconnected() == False:
-  station.disconnect()
-  print("connecting to backup wifi.")
-  station.connect(secrets.bu_ssid, secrets.bu_password)
-  ssid = secrets.bu_ssid
-  password = secrets.bu_password
-  startTime = time.time()
-  while startTime + 10 > time.time() and station.isconnected() == False:
-    print( time.time() - startTime )
-    time.sleep(1)
 
 def download_and_install_update_if_available():
   print("checking for update from: ", secrets.url)
