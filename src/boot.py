@@ -48,11 +48,14 @@ if station.isconnected() == False:
 
 def download_and_install_update_if_available():
   print("checking for update from: ", secrets.url)
-  o = OTAUpdater(secrets.url)
+  o = OTAUpdater(github_repo = secrets.url) #Check to ensure .url 
   if o.check_for_update_to_install_during_next_reboot() == True:
     print("found new update. resetting.")
     machine.reset()
-  o.install_update_if_available_after_boot(ssid, password)
+  if o.install_update_if_available_after_boot(ssid, password) == True:
+    # Double Check this url:
+    # self.http_client.get('https://api.github.com/repos/{}/releases/latest'.format(self.github_repo))
+    machine.reset()
 
 if station.isconnected() == True:
   print('Connection successful to: ' + str(ssid) )
