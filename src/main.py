@@ -14,6 +14,10 @@ try:
 except:
   import socket
 
+pump_pin = Pin(13, Pin.OUT)
+pump_pin.value(1) # OFF. 1 is OFF.
+heater_pin = Pin(16, Pin.OUT)
+heater_pin.value(1)
 ds_pin = Pin(15)
 ds_sensor = ds18x20.DS18X20(onewire.OneWire(ds_pin))
 
