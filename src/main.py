@@ -8,79 +8,151 @@
 
 from machine import Pin
 import onewire, ds18x20
+import time
 import json
-try:
-  import usocket as socket
-except:
-  import socket
+import network
+import esp
+esp.osdebug(None)
+import gc
+gc.collect()
 
-pump_pin = Pin(13, Pin.OUT)
-pump_pin.value(1) # OFF. 1 is OFF.
-heater_pin = Pin(16, Pin.OUT)
-heater_pin.value(1)
-ds_pin = Pin(15)
-ds_sensor = ds18x20.DS18X20(onewire.OneWire(ds_pin))
+import tinyweb # https://github.com/belyalov/tinyweb
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(('', 80))
-s.listen(5)
-indoor_temps = []
-outdoor_temps = []
-times = []
+MAX_TEMPS_TO_KEEP = 25 #Max number of temperature records to keep
+
+valves = {"Battery": 23 , "Bedroom": 22, "Bunks":21, "Bathroom":19, "Front":18} # OUT Is closed. 
+heat_sources = {"electric_heater":3, "engine":9} #OUT is closed
+valve_status = {} # Valve_Name : "Closed"
+statuses = {"Open","Closed"}
+pump_pin = Pin(13, Pin.OUT) #12v pump ON
+pump_pin = Pin(13, Pin.IN) # OFF
+temps = []
 log = []
 
+# Temperature sensors:
+ds_pin = Pin(5)
+ds_sensor = ds18x20.DS18X20(onewire.OneWire(ds_pin))
+
+
+# Utility to fill in statuses with closed to start:
+def init_valve_status():
+  for v in valves.keys():
+    valve_status[v] = "Closed"
+  for h in heat_sources.keys():
+    valve_status[h] = "Closed"
+
+#convert Celsius to Farenheit:
+def CtoF(t):
+  return int(round(t * (9/5) + 32.0, 0))
+
+# update current temps:
 def read_ds_sensors():
   roms = ds_sensor.scan()
   log.insert(0, 'Found DS devices: ' + str(roms) )
   ds_sensor.convert_temp()
-  time.sleep(2)
-  temps = []
-  for rom in roms:
-    temp = ds_sensor.read_temp(rom)
-    if isinstance(temp, float):
-      msg = int(round(temp * (9/5) + 32.0, 0)) #F, not C
-      temps.append(msg)
-  return temps
-
-log.insert(0, "reading first sensors")
-temps = read_ds_sensors()
-if len(temps) > 1:
-  indoor_temps.append(temps[0])
-  outdoor_temps.append(temps[1])
-  times.append( int( time.time() ) ) # full time in sec
-next_time = int( time.time() )
-
-while True:
-  curTime = int( time.time() )
-  if curTime > next_time: 
-    temps = read_ds_sensors()
-    log.insert(0, str(temps) )
-    log = log[0:20]
-    if len(temps) > 1:
-      indoor_temps.insert(0, temps[0])
-      indoor_temps = indoor_temps[0:25]
-      outdoor_temps.insert(0, temps[1])
-      outdoor_temps = outdoor_temps[0:25]
-      times.insert(0, curTime - times[0] ) #time delta in sec
-      next_time = curTime + 60 * 30 #30 minutes
+  time.sleep(.5)
   try:
-    if gc.mem_free() < 102000:
-      gc.collect()
-    conn, addr = s.accept()
-    conn.settimeout(3.0)
-    log.insert(0, 'Got a connection from %s' % str(addr) )
-    request = conn.recv(1024)
-    conn.settimeout(None)
-    request = str(request)
-    #log.insert(0, 'Content = %s' % request)
-    log = log[0:20]
-    response = json.dumps({'times':times,'indoor':indoor_temps, 'outdoor': outdoor_temps, 'log': log})
-    conn.send('HTTP/1.1 200 OK\n')
-    conn.send('Content-Type: application/javascript\n')
-    conn.send('Connection: close\n\n')
-    conn.sendall(response)
-    conn.close()
-    next_time = curTime # get new temp on web refresh
-  except OSError as e:
-    conn.close()
-    print('Connection closed')
+    indoor = CtoF( ds_sensor.read_temp(bytearray(b'(\xcd\x0c@L \x01\x1f')) )
+  except:
+    indoor = ""
+  try:
+    outdoor = CtoF( ds_sensor.read_temp(bytearray(b'(HblL \x01\xcf')) )
+  except:
+    outdoor = ""
+  temps.insert(0, ( (int( time.time() ), indoor, outdoor)) )
+  temps = temps[:MAX_TEMPS_TO_KEEP]
+
+
+def pin_to_status(pin_num, status):
+  """ Open or Close a valve based on status"""
+  if status == "Closed":
+    Pin(pin_num, Pin.OUT)
+  else:
+    Pin(pin_num, Pin.IN)
+
+def update_valve(valve_name,status):
+  if valve_name not in statuses or status not in statuses:
+    return {"message":"Wrong valve_name or status"}, 404
+  valve_status[valve_name] = status
+  if valve_name in valves:
+    pin_to_status(valves[valve_name], status)
+  else:
+    pin_to_status(heat_sources[valve_name], status)
+
+class TemperatureList():
+  def get(self, data):
+    """Return list of all temps"""
+    return {"temps":temps}, 201
+  def post(self,data):
+    """Request a temperature refresh"""
+    read_ds_sensors()
+    return {"message","Got new Temps"}, 201
+
+class Valve_Status_List():
+  def get(self,data):
+    return {"valves":valve_status}, 201
+
+class Valve():
+  def not_exists(self):
+    return {'message':'No such Valve'}, 404
+  
+  def get(self, data, valve_name):
+    """Get status of requested valve"""
+    if valve_name not in valve_status:
+      return self.not_exists()
+    return {valve_name: valve_status[valve_name]}, 201
+  
+  def put(self,data,valve_name, status):
+    """Update valve status"""
+    if valve_name not in valve_status:
+      return self.not_exists()
+    if status not in statuses:
+      return {"message":"Not a correct status"}, 404
+    update_valve(valve_name,status)
+    return {"message":valve_name +" now "+ status}, 201
+
+class Pump():  
+  def get(self, data):
+    """Get status of pump"""
+    if pump_pin.value() == 0:
+      return {"pump": "Off"}, 201
+    return {"pump": "On"}, 201
+  
+  def put(self,data, on):
+    """Toggle Pump"""
+    if on == "On":
+      pump_pin = Pin(13, Pin.OUT)
+      return {"pump": "On"}, 201
+    else: # OFF:
+      pump_pin = Pin(13, Pin.IN)
+      return {"pump":"Off"}, 201
+
+# RESTAPI: System status
+class Machine():
+    def get(self, data):
+        mem = {'mem_alloc': gc.mem_alloc(),
+               'mem_free': gc.mem_free(),
+               'mem_total': gc.mem_alloc() + gc.mem_free()}
+        sta_if = network.WLAN(network.STA_IF)
+        ifconfig = sta_if.ifconfig()
+        net = {'ip': ifconfig[0],
+               'netmask': ifconfig[1],
+               'gateway': ifconfig[2],
+               'dns': ifconfig[3]
+               }
+        return {'memory': mem, 'network': net}, 201
+
+def run():
+  app = tinyweb.webserver()
+  app.add_resource(TemperatureList, '/temps')
+  app.add_resource(Valve_Status_List, '/valves')
+  app.add_resource(Valve, '/valve/<valve_name>/<status>')
+  app.add_resource(Pump, "/pump/<on>")
+  app.add_resource(Machine, '/machine')
+  station = network.WLAN(network.STA_IF)
+  ip = "127.0.0.1"
+  if station.isconnected() == True:
+    ip = station.ifconfig()[0]
+  app.run(host=ip, port=8081)
+
+run()

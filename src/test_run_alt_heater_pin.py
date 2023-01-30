@@ -1,3 +1,11 @@
+# Complete project details at https://RandomNerdTutorials.com
+# TO RUN: 
+# cd "G:\My Drive\Cars\bus Haus\floor_heater"
+# ampy --port COM5 put test_run_alt_heater_pin.py
+# to Reset:
+# cd "C:\Users\willYOGA\Desktop\ESP32RET_Updater"
+# .\esptool.exe --chip esp32 --port COM5 --baud 460800 write_flash -z 0x1000 esp32-ota-20220618-v1.19.1.bin
+
 from machine import Pin
 import onewire, ds18x20
 import time
