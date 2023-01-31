@@ -19,6 +19,9 @@ gc.collect()
 import tinyweb # https://github.com/belyalov/tinyweb
 
 MAX_TEMPS_TO_KEEP = 25 #Max number of temperature records to keep
+TIME_BETWEEN_TEMPS = 60 * 60 # 1 hour between temp reads.
+CIRCUIT_SWITCH_TIME = 90 #number of seconds to run each individual circuit
+AUTO_SWITCH_CIRCUIT = True # switch each circuit automatically
 
 valves = {"Battery": 23 , "Bedroom": 22, "Bunks":21, "Bathroom":19, "Front":18} # OUT Is closed. 
 heat_sources = {"electric_heater":3, "engine":9} #OUT is closed
@@ -32,7 +35,6 @@ log = []
 # Temperature sensors:
 ds_pin = Pin(5)
 ds_sensor = ds18x20.DS18X20(onewire.OneWire(ds_pin))
-
 
 # Utility to fill in statuses with closed to start:
 def init_valve_status():
@@ -61,7 +63,6 @@ def read_ds_sensors():
     outdoor = ""
   temps.insert(0, ( (int( time.time() ), indoor, outdoor)) )
   temps = temps[:MAX_TEMPS_TO_KEEP]
-
 
 def pin_to_status(pin_num, status):
   """ Open or Close a valve based on status"""
@@ -96,59 +97,76 @@ class Valve():
   def not_exists(self):
     return {'message':'No such Valve'}, 404
   
-  def get(self, data, valve_name):
+  def get(self, data, valve_name, status):
     """Get status of requested valve"""
     if valve_name not in valve_status:
       return self.not_exists()
+    if status in statuses:
+      update_valve(valve_name, status)
+      return {valve_name: valve_status[valve_name]}, 201
+    # no status or incorrect status, so return the current status: 
     return {valve_name: valve_status[valve_name]}, 201
-  
-  def put(self,data,valve_name, status):
-    """Update valve status"""
-    if valve_name not in valve_status:
-      return self.not_exists()
-    if status not in statuses:
-      return {"message":"Not a correct status"}, 404
-    update_valve(valve_name,status)
-    return {"message":valve_name +" now "+ status}, 201
 
 class Pump():  
-  def get(self, data):
-    """Get status of pump"""
-    if pump_pin.value() == 0:
-      return {"pump": "Off"}, 201
-    return {"pump": "On"}, 201
-  
-  def put(self,data, on):
-    """Toggle Pump"""
+  def get(self, data, on):
+    """Get or set status of pump"""
     if on == "On":
       pump_pin = Pin(13, Pin.OUT)
       return {"pump": "On"}, 201
-    else: # OFF:
+    elif on == "Off":
       pump_pin = Pin(13, Pin.IN)
       return {"pump":"Off"}, 201
+    #no on variable, so return current status
+    if pump_pin.value() == 0:
+      return {"pump": "Off"}, 201
+    return {"pump": "On"}, 201
 
 # RESTAPI: System status
 class Machine():
-    def get(self, data):
-        mem = {'mem_alloc': gc.mem_alloc(),
-               'mem_free': gc.mem_free(),
-               'mem_total': gc.mem_alloc() + gc.mem_free()}
-        sta_if = network.WLAN(network.STA_IF)
-        ifconfig = sta_if.ifconfig()
-        net = {'ip': ifconfig[0],
-               'netmask': ifconfig[1],
-               'gateway': ifconfig[2],
-               'dns': ifconfig[3]
-               }
-        return {'memory': mem, 'network': net}, 201
+    def get(self, data, reset):
+      if reset == "reset":
+        machine.reset()
+      mem = {'mem_alloc': gc.mem_alloc(),
+              'mem_free': gc.mem_free(),
+              'mem_total': gc.mem_alloc() + gc.mem_free()}
+      sta_if = network.WLAN(network.STA_IF)
+      ifconfig = sta_if.ifconfig()
+      net = {'ip': ifconfig[0],
+              'netmask': ifconfig[1],
+              'gateway': ifconfig[2],
+              'dns': ifconfig[3]
+              }
+      return {'memory': mem, 'network': net}, 201
+
+class ValveHandler():
+  def __init__(self):
+    """Runs Valves and eventually CAN in background
+    """
+    self.loop = asyncio.get_event_loop()
+    self.read_temps = True
+  async def _timed_temp_logging():
+    while self.read_temps:
+      read_ds_sensors()
+      time.sleep(TIME_BETWEEN_TEMPS)
+  async def _auto_valve_cycle():
+    i = 0
+    while AUTO_SWITCH_CIRCUIT:
+      for v in valves.keys():
+        #TODO: repeat through valve names and open next one, then close last one every CIRCUIT_SWITCH_TIME
+        pass
+  def run(self):
+    self._timed_temps = self._timed_temp_logging()
+    self.loop.create_task(self._timed_temps)
+    self.loop.run_forever()
+
 
 def run():
-  app = tinyweb.webserver()
+  app = tinyweb.webserver(debug=True)
   app.add_resource(TemperatureList, '/temps')
   app.add_resource(Valve_Status_List, '/valves')
   app.add_resource(Valve, '/valve/<valve_name>/<status>')
   app.add_resource(Pump, "/pump/<on>")
-  app.add_resource(Machine, '/machine')
+  app.add_resource(Machine, '/machine/<reset>')
   station = network.WLAN(network.STA_IF)
   ip = "127.0.0.1"
   if station.isconnected() == True:
