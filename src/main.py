@@ -15,11 +15,13 @@ import esp
 esp.osdebug(None)
 import gc
 gc.collect()
+from itertools import cycle
 
 import tinyweb # https://github.com/belyalov/tinyweb
 
 MAX_TEMPS_TO_KEEP = 25 #Max number of temperature records to keep
 TIME_BETWEEN_TEMPS = 60 * 60 # 1 hour between temp reads.
+READ_TEMPS = True # read temperatures every time between Temps
 CIRCUIT_SWITCH_TIME = 90 #number of seconds to run each individual circuit
 AUTO_SWITCH_CIRCUIT = True # switch each circuit automatically
 
@@ -48,11 +50,11 @@ def CtoF(t):
   return int(round(t * (9/5) + 32.0, 0))
 
 # update current temps:
-def read_ds_sensors():
+async def read_ds_sensors():
   roms = ds_sensor.scan()
   log.insert(0, 'Found DS devices: ' + str(roms) )
   ds_sensor.convert_temp()
-  time.sleep(.5)
+  await asyncio.sleep(.5)
   try:
     indoor = CtoF( ds_sensor.read_temp(bytearray(b'(\xcd\x0c@L \x01\x1f')) )
   except:
@@ -138,29 +140,26 @@ class Machine():
               }
       return {'memory': mem, 'network': net}, 201
 
-class ValveHandler():
-  def __init__(self):
-    """Runs Valves and eventually CAN in background
-    """
-    self.loop = asyncio.get_event_loop()
-    self.read_temps = True
-  async def _timed_temp_logging():
-    while self.read_temps:
-      read_ds_sensors()
-      time.sleep(TIME_BETWEEN_TEMPS)
-  async def _auto_valve_cycle():
-    i = 0
-    while AUTO_SWITCH_CIRCUIT:
-      for v in valves.keys():
-        #TODO: repeat through valve names and open next one, then close last one every CIRCUIT_SWITCH_TIME
-        pass
-  def run(self):
-    self._timed_temps = self._timed_temp_logging()
-    self.loop.create_task(self._timed_temps)
-    self.loop.run_forever()
+# Get temperature every time interval:
+async def timed_temp_logging():
+  global READ_TEMPS
+  while READ_TEMPS:
+    await read_ds_sensors()
+    await asyncio.sleep(TIME_BETWEEN_TEMPS)
 
+# cycle through valves to keep all zones warm:
+async def auto_valve_cycle():
+  global CIRCUIT_SWITCH_TIME
+  last = valves.keys()[-1]
+  valve_names_cycle = cycle.valves.keys()
+  while AUTO_SWITCH_CIRCUIT:
+    for v in valve_names_cycle:
+      update_valve(v,"Open")
+      update_valve(last, "Closed")
+      last = v
+      asyncio.sleep(CIRCUIT_SWITCH_TIME)
 
-def run():
+async def run_background_and_webserver():
   app = tinyweb.webserver(debug=True)
   app.add_resource(TemperatureList, '/temps')
   app.add_resource(Valve_Status_List, '/valves')
@@ -171,6 +170,9 @@ def run():
   ip = "127.0.0.1"
   if station.isconnected() == True:
     ip = station.ifconfig()[0]
-  app.run(host=ip, port=8081)
+  async with asyncio.TaskGroup() as tg:
+    tg.create_task(timed_temp_logging())
+    tg.create_task(auto_valve_cycle())
+    tg.create_task( app.run(host=ip, port=8081) )
 
-run()
+asyncio.run(run_background_and_webserver())
