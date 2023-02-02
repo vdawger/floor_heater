@@ -22,12 +22,12 @@ from ota_updater import OTAUpdater
 
 def download_and_install_update_if_available(ssid, password):
   print("checking for update from: ", secrets.url)
-  o = OTAUpdater(github_repo = secrets.url, secrets_file="secrets.py", main_dir='/')  
+  o = OTAUpdater(github_repo = secrets.url, secrets_file="secrets.py", main_dir='/', github_src_dir="src")  
   if o.install_update_if_available_after_boot(ssid, password) == True:
     # Double Check this url:
     # self.http_client.get('https://api.github.com/repos/{}/releases/latest'.format(self.github_repo))
     machine.reset()
-  if o.check_for_update_to_install_during_next_reboot() == True:
+  elif o.check_for_update_to_install_during_next_reboot() == True:
     #this creates a .version file to update if there's a newer version.
     print("found new update. resetting.")
     machine.reset()
