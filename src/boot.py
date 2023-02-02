@@ -22,7 +22,7 @@ from ota_updater import OTAUpdater
 
 def download_and_install_update_if_available(ssid, password):
   print("checking for update from: ", secrets.url)
-  o = OTAUpdater(github_repo = secrets.url) #Check to ensure .url 
+  o = OTAUpdater(github_repo = secrets.url, secrets_file=secrets.py, main_dir='/') #Check to ensure .url 
   if o.check_for_update_to_install_during_next_reboot() == True:
     #this creates a .version file to update if there's a newer version.
     print("found new update. resetting.")
