@@ -20,18 +20,7 @@ import secrets
 #from: https://github.com/rdehuyss/micropython-ota-updater
 from ota_updater import OTAUpdater
 
-station = network.WLAN(network.STA_IF)
-
-# try to connect to bus  wifi first:
-print("trying to connect to bus  hotspot first.")
-station.active(True)
-startTime = time.time()
-station.connect(secrets.bu_ssid, secrets.bu_password)
-while startTime + 9 > time.time() and station.isconnected() == False:
-  print( str(startTime - time.time( )   ))
-  time.sleep(1)
-
-def download_and_install_update_if_available():
+def download_and_install_update_if_available(ssid, password):
   print("checking for update from: ", secrets.url)
   o = OTAUpdater(github_repo = secrets.url) #Check to ensure .url 
   if o.check_for_update_to_install_during_next_reboot() == True:
@@ -43,15 +32,29 @@ def download_and_install_update_if_available():
     # self.http_client.get('https://api.github.com/repos/{}/releases/latest'.format(self.github_repo))
     machine.reset()
 
-if station.isconnected() == True:
-  print('Connection successful to: ' + str(ssid) )
-  print(station.ifconfig())
-  print("checking for updates:")
-  download_and_install_update_if_available()
-  print("update check complete")
-  main.py
-else: # NOT connected to either wifi:
-  print("unable to connect to wifi. starting my own damn wifi.")
-  ap = createAP()
-  print("broadcasting on: ", ap.config('ssid'))
-  main.py
+station = network.WLAN(network.STA_IF)
+
+# connect to primary then alternate wifi:
+for ssid, password in [(secrets.ssid, secrets.password),(secrets.bu_ssid, secrets.bu_password)]:
+  print("Trying to connect to ",ssid)
+  station.active(True)
+  startTime = time.time()
+  station.connect(ssid, password)
+  while startTime + 9 > time.time() and station.isconnected() == False:
+    print( str(startTime - time.time( )   ))
+    time.sleep(1)
+  if station.isconnected() == True: #Connected to a wifi
+    print('Connection successful to: ', ssid )
+    print(station.ifconfig())
+    print("checking for updates:")
+    download_and_install_update_if_available(ssid, password)
+    print("update check complete")
+    main.py
+  else:
+    station.disconnect()
+
+# NOT connected to either wifi:
+print("unable to connect to wifi. starting my own damn wifi.")
+ap = createAP()
+print("broadcasting on: ", ap.config('ssid'))
+main.py

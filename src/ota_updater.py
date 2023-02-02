@@ -12,8 +12,7 @@ class OTAUpdater:
     def __init__(self, github_repo, github_src_dir='', module='', main_dir='main', new_version_dir='next', secrets_file=None, headers={}):
         self.http_client = HttpClient(headers=headers)
         self.github_repo = github_repo.rstrip('/').replace('https://github.com/', '')
-        print("GithubRepo in constructor:")
-        print(self.github_repo)
+        print("GithubRepo in constructor:", self.github_repo)
         self.github_src_dir = '' if len(github_src_dir) < 1 else github_src_dir.rstrip('/') + '/'
         self.module = module.rstrip('/')
         self.main_dir = main_dir
@@ -106,9 +105,12 @@ class OTAUpdater:
             versionfile.close()
 
     def get_version(self, directory, version_file_name='.version'):
+        print("directory: ", directory)
         if version_file_name in os.listdir(directory):
+            print("version file name: ", version_file_name)
             with open(directory + '/' + version_file_name) as f:
                 version = f.read()
+                print("version:",version)
                 return version
         return '0.0'
 

@@ -6,7 +6,6 @@ Tiny Web - pretty simple and powerful web server for tiny platforms like ESP8266
 MIT license
 (C) Konstantin Belyalov 2017-2018
 """
-import logging
 import uasyncio as asyncio
 import uasyncio.core
 import ujson as json
@@ -17,7 +16,7 @@ import uerrno as errno
 import usocket as socket
 
 
-log = logging.getLogger('WEB')
+#log = logging.getLogger('WEB')
 
 type_gen = type((lambda: (yield))())
 
@@ -478,16 +477,20 @@ class webserver:
                 try:
                     await resp.error(500)
                 except Exception as e:
-                    log.exc(e, "")
+                    print("exception line 480: ",e)
+                    #log.exc(e, "")
         except HTTPException as e:
             try:
                 await resp.error(e.code)
             except Exception as e:
-                log.exc(e)
+                print("Exception lin 486:",e)
+                #log.exc(e)
         except Exception as e:
             # Unhandled expection in user's method
-            log.error(req.path.decode())
-            log.exc(e, "")
+            print("Unhandled expection in user's method:", req.path.decode())
+            #log.error(req.path.decode())
+            print("line 492:", e)
+            #log.exc(e, "")
             try:
                 await resp.error(500)
                 # Send exception info if desired
