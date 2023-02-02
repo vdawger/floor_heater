@@ -15,7 +15,6 @@ import esp
 esp.osdebug(None)
 import gc
 gc.collect()
-from itertools import cycle
 
 import tinyweb # https://github.com/belyalov/tinyweb
 
@@ -25,7 +24,7 @@ READ_TEMPS = True # read temperatures every time between Temps
 CIRCUIT_SWITCH_TIME = 90 #number of seconds to run each individual circuit
 AUTO_SWITCH_CIRCUIT = True # switch each circuit automatically
 
-valves = {"Battery": 23 , "Bedroom": 22, "Bunks":21, "Bathroom":19, "Front":18} # OUT Is closed. 
+valve_pins = {"Battery": 23 , "Bedroom": 22, "Bunks":21, "Bathroom":19, "Front":18} # OUT Is closed. 
 heat_sources = {"electric_heater":3, "engine":9} #OUT is closed
 valve_status = {} # Valve_Name : "Closed"
 statuses = {"Open","Closed"}
@@ -40,7 +39,7 @@ ds_sensor = ds18x20.DS18X20(onewire.OneWire(ds_pin))
 
 # Utility to fill in statuses with closed to start:
 def init_valve_status():
-  for v in valves.keys():
+  for v in valve_pins.keys():
     valve_status[v] = "Closed"
   for h in heat_sources.keys():
     valve_status[h] = "Closed"
@@ -77,8 +76,8 @@ def update_valve(valve_name,status):
   if valve_name not in statuses or status not in statuses:
     return {"message":"Wrong valve_name or status"}, 404
   valve_status[valve_name] = status
-  if valve_name in valves:
-    pin_to_status(valves[valve_name], status)
+  if valve_name in valve_pins:
+    pin_to_status(valve_pins[valve_name], status)
   else:
     pin_to_status(heat_sources[valve_name], status)
 
@@ -93,7 +92,7 @@ class TemperatureList():
 
 class Valve_Status_List():
   def get(self,data):
-    return {"valves":valve_status}, 201
+    return {"valve_statuses":valve_status}, 201
 
 class Valve():
   def not_exists(self):
@@ -147,22 +146,26 @@ async def timed_temp_logging():
     await read_ds_sensors()
     await asyncio.sleep(TIME_BETWEEN_TEMPS)
 
-# cycle through valves to keep all zones warm:
+# cycle through valve_pins to keep all zones warm:
 async def auto_valve_cycle():
   global CIRCUIT_SWITCH_TIME
-  last = valves.keys()[-1]
-  valve_names_cycle = cycle.valves.keys()
+  cur = 0
+  valve_names = list(valve_pins.keys())
+  num_valves = len(valve_names)
+  last = num_valves-1
   while AUTO_SWITCH_CIRCUIT:
-    for v in valve_names_cycle:
-      update_valve(v,"Open")
-      update_valve(last, "Closed")
-      last = v
-      asyncio.sleep(CIRCUIT_SWITCH_TIME)
+    v_name = valve_names[cur]
+    last_v_name = valve_names[last]
+    cur = (cur + 1) % (num_valves -1 )
+    last = (last + 1) % (num_valves -1 )
+    update_valve(v_name,"Open")
+    update_valve(last_v_name, "Closed")
+    asyncio.sleep(CIRCUIT_SWITCH_TIME)
 
 async def run_background_and_webserver():
   app = tinyweb.webserver(debug=True)
   app.add_resource(TemperatureList, '/temps')
-  app.add_resource(Valve_Status_List, '/valves')
+  app.add_resource(Valve_Status_List, '/valve_statuses')
   app.add_resource(Valve, '/valve/<valve_name>/<status>')
   app.add_resource(Pump, "/pump/<on>")
   app.add_resource(Machine, '/machine/<reset>')
