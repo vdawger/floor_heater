@@ -22,14 +22,14 @@ from ota_updater import OTAUpdater
 
 def download_and_install_update_if_available(ssid, password):
   print("checking for update from: ", secrets.url)
-  o = OTAUpdater(github_repo = secrets.url, secrets_file=secrets.py, main_dir='/') #Check to ensure .url 
-  if o.check_for_update_to_install_during_next_reboot() == True:
-    #this creates a .version file to update if there's a newer version.
-    print("found new update. resetting.")
-    machine.reset()
+  o = OTAUpdater(github_repo = secrets.url, secrets_file="secrets.py", main_dir='/')  
   if o.install_update_if_available_after_boot(ssid, password) == True:
     # Double Check this url:
     # self.http_client.get('https://api.github.com/repos/{}/releases/latest'.format(self.github_repo))
+    machine.reset()
+  if o.check_for_update_to_install_during_next_reboot() == True:
+    #this creates a .version file to update if there's a newer version.
+    print("found new update. resetting.")
     machine.reset()
 
 station = network.WLAN(network.STA_IF)
@@ -46,7 +46,6 @@ for ssid, password in [(secrets.ssid, secrets.password),(secrets.bu_ssid, secret
   if station.isconnected() == True: #Connected to a wifi
     print('Connection successful to: ', ssid )
     print(station.ifconfig())
-    print("checking for updates:")
     download_and_install_update_if_available(ssid, password)
     print("update check complete")
     main.py
