@@ -65,7 +65,10 @@ class WifiConnector():
             print("Hosting AP at: "+ ap.config('essid'))
             self.m.log("Hosting AP at: "+ ap.config('essid'))
             return (ssid, password)
-        except:
+        except Exception as inst:
+            print(type(inst))    # the exception instance
+            print(inst.args)     # arguments stored in .args
+            print(inst)
             print("did not connect to any wifi or create my own.")
             self.m.log("did not connect to any wifi or create my own.")
             return False
