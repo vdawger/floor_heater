@@ -11,5 +11,3 @@ from WIFIconnector import WifiConnector
 # If it cannot connect to a wifi hotspot, it creates its own wifi access point
 w = WifiConnector()
 w.connect_to_networks()
-
-main.py

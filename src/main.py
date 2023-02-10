@@ -149,7 +149,7 @@ class Wifi_Settings():
 class Machine():
     def get(self, data, reset):
         if reset == "reset":
-            machine.reset()
+            raise Exception()
         mem = {'mem_alloc': gc.mem_alloc(),
                 'mem_free': gc.mem_free(),
                 'mem_total': gc.mem_alloc() + gc.mem_free()}
@@ -187,30 +187,30 @@ async def auto_valve_cycle():
 
 async def final_delay():
     await asyncio.sleep_ms(100)
+def run():
+    webserver = tinyweb.webserver(debug=True)
+    try:    
+        webserver.add_resource(TemperatureList, '/temps')
+        webserver.add_resource(Valve_Status_List, '/valve_statuses')
+        webserver.add_resource(Valve, '/valve/<valve_name>/<status>')
+        webserver.add_resource(Pump, "/pump/<on>")
+        webserver.add_resource(Machine, '/machine/<reset>')
 
-webserver = tinyweb.webserver(debug=True)
-try:    
-    webserver.add_resource(TemperatureList, '/temps')
-    webserver.add_resource(Valve_Status_List, '/valve_statuses')
-    webserver.add_resource(Valve, '/valve/<valve_name>/<status>')
-    webserver.add_resource(Pump, "/pump/<on>")
-    webserver.add_resource(Machine, '/machine/<reset>')
-
-    station = network.WLAN(network.STA_IF)
-    ap = network.WLAN(network.AP_IF)
-    ip = "127.0.0.1" #default if nothing else is working
-    if station.isconnected() == True:
-        ip = station.ifconfig()[0]
-    elif ap.active():
-        ip = ap.ifconfig()[0]
-    #non server IO to run concurrently
-    other_coroutines = [
-        timed_temp_logging(), 
-        auto_valve_cycle(), 
-    ]
-    webserver.run(host=ip,port=8081,other_coroutines=other_coroutines)
-except Exception() as e:
-    print(e)
-    webserver.shutdown()
-    uasyncio.get_event_loop().run_until_complete(final_delay())
+        station = network.WLAN(network.STA_IF)
+        ap = network.WLAN(network.AP_IF)
+        ip = "127.0.0.1" #default if nothing else is working
+        if station.isconnected() == True:
+            ip = station.ifconfig()[0]
+        elif ap.active():
+            ip = ap.ifconfig()[0]
+        #non server IO to run concurrently
+        uasyncio.get_event_loop().create_task(timed_temp_logging())
+        uasyncio.get_event_loop().create_task(auto_valve_cycle())
+        
+        webserver.run(host=ip,port=8081)
+    except Exception() as e:
+        print(e)
+        webserver.shutdown()
+        uasyncio.get_event_loop().run_until_complete(final_delay())
+        machine.reset()
 

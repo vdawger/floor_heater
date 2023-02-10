@@ -679,7 +679,7 @@ class webserver:
         finally:
             sock.close()
 
-    def run(self, host="127.0.0.1", port=8081, loop_forever=True, other_coroutines=None):
+    def run(self, host="127.0.0.1", port=8081, loop_forever=True):
         """Run Web Server. By default it runs forever.
 
         Keyword arguments:
@@ -689,16 +689,11 @@ class webserver:
         """
         self._server_coro = self._tcp_server(host, port, self.backlog)
         self.loop.create_task(self._server_coro)
-        self._other_coroutines = other_coroutines
-        for coro in other_coroutines:
-            self.loop.create_task(coro)
         if loop_forever:
             self.loop.run_forever()
 
     def shutdown(self):
         """Gracefully shutdown Web Server"""
         asyncio.cancel(self._server_coro)
-        for coro in self._other_coroutines:
-            asyncio.cancel(coro)
         for hid, coro in self.conns.items():
             asyncio.cancel(coro)
