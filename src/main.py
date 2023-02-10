@@ -185,26 +185,32 @@ async def auto_valve_cycle():
         update_valve(last_v_name, "Closed")
         asyncio.sleep(CIRCUIT_SWITCH_TIME)
 
-async def run_background_and_webserver():
-    app = tinyweb.webserver(debug=True)
-    app.add_resource(TemperatureList, '/temps')
-    app.add_resource(Valve_Status_List, '/valve_statuses')
-    app.add_resource(Valve, '/valve/<valve_name>/<status>')
-    app.add_resource(Pump, "/pump/<on>")
-    app.add_resource(Machine, '/machine/<reset>')
+async def final_delay():
+    await asyncio.sleep_ms(100)
+
+webserver = tinyweb.webserver(debug=True)
+try:    
+    webserver.add_resource(TemperatureList, '/temps')
+    webserver.add_resource(Valve_Status_List, '/valve_statuses')
+    webserver.add_resource(Valve, '/valve/<valve_name>/<status>')
+    webserver.add_resource(Pump, "/pump/<on>")
+    webserver.add_resource(Machine, '/machine/<reset>')
+
     station = network.WLAN(network.STA_IF)
     ap = network.WLAN(network.AP_IF)
-    ip = "127.0.0.1"
+    ip = "127.0.0.1" #default if nothing else is working
     if station.isconnected() == True:
         ip = station.ifconfig()[0]
     elif ap.active():
         ip = ap.ifconfig()[0]
-    awaitables = [
+    #non server IO to run concurrently
+    other_coroutines = [
         timed_temp_logging(), 
         auto_valve_cycle(), 
-        app.run(host=ip,port=8081).
     ]
-    asyncio.gather(awaitables)
-
-asyncio.run(run_background_and_webserver())
+    webserver.run(host=ip,port=8081,other_coroutines=other_coroutines)
+except Exception() as e:
+    print(e)
+    webserver.shutdown()
+    uasyncio.get_event_loop().run_until_complete(final_delay())
 
