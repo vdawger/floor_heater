@@ -17,6 +17,8 @@ esp.osdebug(None)
 import gc
 gc.collect()
 
+import uasyncio as asyncio
+
 import tinyweb # https://github.com/belyalov/tinyweb
 
 from micrologger import MicroLogger
