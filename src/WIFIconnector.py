@@ -31,7 +31,7 @@ class WifiConnector():
             # connect to primary then alternate wifi:
             for ssid, password in secrets.network_data:
                 print("Trying to connect to ", ssid)
-                self.m.log("Trying to connect to ", ssid)
+                self.m.log("Trying to connect to "+ ssid)
                 station.active(True)
                 startTime = time.time()
                 station.connect(ssid, password)
@@ -41,9 +41,9 @@ class WifiConnector():
                     time.sleep(1)
                 if station.isconnected() == True: #Connected to a wifi
                     print('Connection successful to: ', ssid )
-                    self.m.log('Connection successful to: ', ssid )
+                    self.m.log('Connection successful to: '+ ssid )
                     print(station.ifconfig())
-                    self.m.log(station.ifconfig())
+                    self.m.log(str(station.ifconfig()))
                     self.download_and_install_update_if_available(ssid, password)
                     return True
                 else:
