@@ -206,7 +206,7 @@ def run():
         #non server IO to run concurrently
         uasyncio.get_event_loop().create_task(timed_temp_logging())
         uasyncio.get_event_loop().create_task(auto_valve_cycle())
-        
+
         webserver.run(host=ip,port=8081)
     except Exception() as e:
         print(e)
@@ -214,3 +214,4 @@ def run():
         uasyncio.get_event_loop().run_until_complete(final_delay())
         machine.reset()
 
+run()
