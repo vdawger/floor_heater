@@ -8,3 +8,4 @@ esptool.exe
 esp32-ota-20220618-v1.19.1.bin
 esptool.py
 .version
+certificates/pkey.pem

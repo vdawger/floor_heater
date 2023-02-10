@@ -656,6 +656,7 @@ class webserver:
                 else:
                     yield asyncio.IORead(sock)
                 csock, caddr = sock.accept()
+                # csock = ssl.wrap_socket(csock, server_side=True, key=key, cert=cert) # UNCOMMENT ME FOR SSL
                 csock.setblocking(False)
                 # Start handler / keep it in the map - to be able to
                 # shutdown gracefully - by close all connections
@@ -672,6 +673,53 @@ class webserver:
                 if len(self.conns) == self.max_concurrency:
                     # Pause
                     yield False
+        except asyncio.CancelledError:
+            return
+        finally:
+            sock.close()
+    
+    # EXPERIMENTAL: to replace TCP Server. Just wraps csock into ssl socket.
+    # from: https://github.com/micropython/micropython/blob/master/examples/network/http_server_ssl.py
+    async def _SSL_server(self, host, port, backlog):
+        """TCP SSL Server implementation.
+        Opens socket for accepting connection and
+        creates task for every new accepted connection
+        """
+        addr = socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)[0][-1]
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setblocking(False)
+        # # Binding to all interfaces - server will be accessible to other hosts!
+        # ai = socket.getaddrinfo("0.0.0.0", 8443)
+        # print("Bind address info:", ai)
+        # addr = ai[0][-1]
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(addr)
+        s.listen(backlog)
+        # print("Listening, connect your browser to https://<this_host>:8443/")
+        try:
+            while True:
+                if IS_UASYNCIO_V3:
+                    yield uasyncio.core._io_queue.queue_read(sock)
+                else:
+                    yield asyncio.IORead(sock)
+            csock, caddr = sock.accept() # called client_s, client_addr
+            csock.setblocking(False)
+            csock = ssl.wrap_socket(csock, server_side=True, key=key, cert=cert)
+            # Start handler / keep it in the map - to be able to
+            # shutdown gracefully - by close all connections
+            self.processed_connections += 1
+            hid = id(csock)
+            handler = self._handler(asyncio.StreamReader(csock),
+                                    asyncio.StreamWriter(csock, {}))
+            self.conns[hid] = handler
+            self.loop.create_task(handler)
+            # In case of max concurrency reached - temporary pause server:
+            # 1. backlog must be greater than max_concurrency, otherwise
+            #    client will got "Connection Reset"
+            # 2. Server task will be resumed whenever one active connection finished
+            if len(self.conns) == self.max_concurrency:
+                # Pause
+                yield False
         except asyncio.CancelledError:
             return
         finally:
