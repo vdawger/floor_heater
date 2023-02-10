@@ -20,6 +20,7 @@ gc.collect()
 import tinyweb # https://github.com/belyalov/tinyweb
 
 from micrologger import MicroLogger
+from file_updater import FileUpdater
 
 MAX_TEMPS_TO_KEEP = 25 #Max number of temperature records to keep
 TIME_BETWEEN_TEMPS = 60 * 60 # 1 hour between temp reads.
@@ -138,8 +139,8 @@ class Wifi_Settings():
         """Change value of selected pref"""
         if old_val not in self.prefs:
             return {'message':'No such pref'}, 404
-        p = PrefUpdater(old_val, new_val)
-        if p.replace_value_in_secrets():
+        f = FileUpdater(old_file='secrets.py',new_file='new_secrets.py')
+        if f.replace_str_in_file(old_val, new_val):
             return {"message":old_val+" updated to "+new_val+". Machine reset to see changes"}, 201
         return {"message":"Failed to update pref"}, 404
 
@@ -191,9 +192,12 @@ async def run_background_and_webserver():
     app.add_resource(Pump, "/pump/<on>")
     app.add_resource(Machine, '/machine/<reset>')
     station = network.WLAN(network.STA_IF)
+    ap = network.WLAN(network.AP_IF)
     ip = "127.0.0.1"
     if station.isconnected() == True:
         ip = station.ifconfig()[0]
+    elif ap.active():
+        ip = ap.ifconfig()[0]
     async with asyncio.TaskGroup() as tg:
         tg.create_task(timed_temp_logging())
         tg.create_task(auto_valve_cycle())

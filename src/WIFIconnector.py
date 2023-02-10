@@ -12,7 +12,7 @@ class WifiConnector():
     def download_and_install_update_if_available(self, ssid, password):
         print("checking for update from: ", secrets.url)
         m.log("checking for update from: ", secrets.url)
-        o = OTAUpdater(github_repo = secrets.url, secrets_file="src/secrets.py", main_dir='/', github_src_dir="src")  
+        o = OTAUpdater(github_repo = secrets.url, secrets_file="secrets.py", main_dir='/', github_src_dir="src")  
         if o.install_update_if_available_after_boot() == True:
             print("Update installed. Advise reboot")
             m.log("Update installed. Advise reboot")

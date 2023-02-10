@@ -102,7 +102,6 @@ class OTAUpdater:
         self.mkdir(self.modulepath(self.new_version_dir))
         with open(self.modulepath(self.new_version_dir + '/.version'), 'w') as versionfile:
             versionfile.write(latest_version)
-            versionfile.close()
 
     def get_version(self, directory, version_file_name='.version'):
         print("directory: ", directory)
@@ -149,7 +148,6 @@ class OTAUpdater:
                 self.mkdir(path)
                 self._download_all_files(version, sub_dir + '/' + file['name'])
             gc.collect()
-
         file_list.close()
 
     def _download_file(self, version, gitPath, path):

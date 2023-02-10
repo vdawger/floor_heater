@@ -4,7 +4,7 @@ import os
 
 
 class FileUpdater():
-    def __init__(self, directory="src/", old_file="secrets.py",new_file="new_secrets.py"):
+    def __init__(self, directory="", old_file="secrets.py",new_file="new_secrets.py"):
         # constants:
         self.directory = directory
         self.old_file = old_file

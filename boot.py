@@ -5,11 +5,11 @@ esp.osdebug(None)
 import gc
 gc.collect()
 
-from src import WIFIconnector
+from WIFIconnector import WifiConnector
 
 # connects to the networks in the secrets.py folder in order. 
 # If it cannot connect to a wifi hotspot, it creates its own wifi access point
-w = WIFIconnector.WifiConnector()
+w = WifiConnector()
 w.connect_to_networks()
 
-src.main.py
+main.py
