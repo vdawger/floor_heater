@@ -41,7 +41,7 @@ class WifiConnector():
                 if station.isconnected() == True: #Connected to a wifi
                     self.m.log('Connection successful to: '+ ssid )
                     self.m.log(str(station.ifconfig()))
-                    self.download_and_install_update_if_available()
+                    #self.download_and_install_update_if_available()
                     return True
                 else:
                     station.disconnect()
@@ -59,7 +59,7 @@ class WifiConnector():
                 quit() # Cannot connect to wifi or access point, so revert to REPL
             self.m.log("Hosting AP at: "+ ap.config('essid'))
             return True
-        except Exception as inst:
-            self.m.log(str(inst))
+        except Exception as e:
+            self.m.log(str(e))
             self.m.log("did not connect to any wifi or create my own.")
             return False
