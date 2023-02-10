@@ -36,7 +36,7 @@ class WifiConnector():
                 startTime = time.time()
                 station.connect(ssid, password)
                 while startTime + 9 > time.time() and station.isconnected() == False:
-                    self.m.log( str(startTime - time.time( )   ))
+                    self.m.log( str(time.time() - startTime   ))
                     time.sleep(1)
                 if station.isconnected() == True: #Connected to a wifi
                     self.m.log('Connection successful to: '+ ssid )
@@ -53,7 +53,7 @@ class WifiConnector():
             ap.config(essid=secrets.ap_ssid, password=secrets.ap_password)
             startTime = time.time()
             while startTime+9 > time.time() and ap.active() == False:
-                self.m.log( str(startTime - time.time()) + "Creating Access Point.")
+                self.m.log( str(time.time() - startTime) + "Creating Access Point.")
                 time.sleep(1)
             if startTime + 9 < time.time(): # took longer than 9 seconds:
                 quit() # Cannot connect to wifi or access point, so revert to REPL

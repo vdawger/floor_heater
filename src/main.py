@@ -195,23 +195,25 @@ def run():
         webserver.add_resource(Valve, '/valve/<valve_name>/<status>')
         webserver.add_resource(Pump, "/pump/<on>")
         webserver.add_resource(Machine, '/machine/<reset>')
-
+        print("got to network stuff")
         station = network.WLAN(network.STA_IF)
         ap = network.WLAN(network.AP_IF)
         ip = "127.0.0.1" #default if nothing else is working
+        print("updating IP")
         if station.isconnected() == True:
             ip = station.ifconfig()[0]
         elif ap.active():
             ip = ap.ifconfig()[0]
+        print("IP g2g")
         #non server IO to run concurrently
         uasyncio.get_event_loop().create_task(timed_temp_logging())
+        print("timed_temp_started")
         uasyncio.get_event_loop().create_task(auto_valve_cycle())
-
+        print("webserver:")
         webserver.run(host=ip,port=8081)
-    except Exception() as e:
+    except Exception as e:
         print(e)
         webserver.shutdown()
         uasyncio.get_event_loop().run_until_complete(final_delay())
-        machine.reset()
 
 run()
