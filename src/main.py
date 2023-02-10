@@ -199,10 +199,12 @@ async def run_background_and_webserver():
         ip = station.ifconfig()[0]
     elif ap.active():
         ip = ap.ifconfig()[0]
-    async with asyncio.TaskGroup() as tg:
-        tg.create_task(timed_temp_logging())
-        tg.create_task(auto_valve_cycle())
-        tg.create_task( app.run(host=ip, port=8081) )
+    awaitables = [
+        timed_temp_logging(), 
+        auto_valve_cycle(), 
+        app.run(host=ip,port=8081).
+    ]
+    asyncio.gather(awaitables)
 
 asyncio.run(run_background_and_webserver())
 
