@@ -1,7 +1,11 @@
 import secrets
+import time
+
 import network
-from ota_updater import OTAUpdater
+
 from micrologger import MicroLogger
+from ota_updater import OTAUpdater
+
 # this is a secrets.py file that git ignores. 
 # it is in same folder as boot.py. 
 # See secrets_template.py
@@ -10,9 +14,9 @@ class WifiConnector():
     def __init__(self):
         self.m = MicroLogger()
 
-    def download_and_install_update_if_available(self, ssid, password):
-        print("checking for update from: ", secrets.url)
-        self.m.log("checking for update from: ", secrets.url)
+    def download_and_install_update_if_available(self):
+        print("checking for update from: "+ secrets.url)
+        self.m.log("checking for update from: "+ secrets.url)
         o = OTAUpdater(github_repo = secrets.url, secrets_file="secrets.py", main_dir='/', github_src_dir="src")  
         if o.install_update_if_available_after_boot() == True:
             print("Update installed. Advise reboot")
@@ -30,7 +34,7 @@ class WifiConnector():
             station = network.WLAN(network.STA_IF)
             # connect to primary then alternate wifi:
             for ssid, password in secrets.network_data:
-                print("Trying to connect to ", ssid)
+                print("Trying to connect to "+ ssid)
                 self.m.log("Trying to connect to "+ ssid)
                 station.active(True)
                 startTime = time.time()
@@ -40,11 +44,11 @@ class WifiConnector():
                     self.m.log( str(startTime - time.time( )   ))
                     time.sleep(1)
                 if station.isconnected() == True: #Connected to a wifi
-                    print('Connection successful to: ', ssid )
+                    print('Connection successful to: ' + ssid )
                     self.m.log('Connection successful to: '+ ssid )
                     print(station.ifconfig())
                     self.m.log(str(station.ifconfig()))
-                    self.download_and_install_update_if_available(ssid, password)
+                    self.download_and_install_update_if_available()
                     return True
                 else:
                     station.disconnect()
@@ -64,7 +68,7 @@ class WifiConnector():
                 quit() # Cannot connect to wifi or access point, so revert to REPL
             print("Hosting AP at: "+ ap.config('essid'))
             self.m.log("Hosting AP at: "+ ap.config('essid'))
-            return (ssid, password)
+            return True
         except Exception as inst:
             print(type(inst))    # the exception instance
             print(inst.args)     # arguments stored in .args
