@@ -132,12 +132,11 @@ class Pump():
 
 # Change wifi settings:
 class Wifi_Settings():
-    self.prefs = secrets.network_data.append( (secrets.ap_ssid, secrets.ap_password) )
-    self.prefs = [val for pair in self.prefs for val in pair]
-
     def get(self, data, old_val, new_val):
+        prefs = secrets.network_data.append( (secrets.ap_ssid, secrets.ap_password) )
+        prefs = [val for pair in self.prefs for val in pair]
         """Change value of selected pref"""
-        if old_val not in self.prefs:
+        if old_val not in prefs:
             return {'message':'No such pref'}, 404
         f = FileUpdater(old_file='secrets.py',new_file='new_secrets.py')
         if f.replace_str_in_file(old_val, new_val):
