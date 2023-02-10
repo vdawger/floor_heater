@@ -2,12 +2,13 @@
 from file_updater import FileUpdater
 
 class MicroLogger():
-    self.file = "log.txt"
-    self.shortened = "shortened_log.txt"
-    self.MAX_LINES = 25 #max number of lines in file before deleting
-    self.line_count = 0
-    self.HOW_MANY_TO_TRIM = 10 # how many lines to trim off when replacing log file
-    self.next_trimming = self.MAX_LINES
+    def __init__(self):
+        self.file = "log.txt"
+        self.shortened = "shortened_log.txt"
+        self.MAX_LINES = 25 #max number of lines in file before deleting
+        self.line_count = 0
+        self.HOW_MANY_TO_TRIM = 10 # how many lines to trim off when replacing log file
+        self.next_trimming = self.MAX_LINES
 
     def log(self, line):
         with open(self.file,'a') as f:
