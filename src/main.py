@@ -90,6 +90,7 @@ def update_valve(valve_name,status):
 class TemperatureList():
     def get(self, data):
         """Return list of all temps"""
+        print("got list of temps")
         return {"temps":temps}, 201
     def post(self,data):
         """Request a temperature refresh"""
@@ -167,6 +168,7 @@ async def timed_temp_logging():
     global READ_TEMPS
     while READ_TEMPS:
         await read_ds_sensors()
+        print("temps read")
         await asyncio.sleep(TIME_BETWEEN_TEMPS)
 
 # cycle through valve_pins to keep all zones warm:
@@ -183,7 +185,8 @@ async def auto_valve_cycle():
         last = (last + 1) % (num_valves -1 )
         update_valve(v_name,"Open")
         update_valve(last_v_name, "Closed")
-        asyncio.sleep(CIRCUIT_SWITCH_TIME)
+        print("valves switched"+CIRCUIT_SWITCH_TIME)
+        await asyncio.sleep(CIRCUIT_SWITCH_TIME)
 
 async def final_delay():
     await asyncio.sleep_ms(100)
@@ -206,14 +209,14 @@ def run():
             ip = ap.ifconfig()[0]
         print("IP g2g")
         #non server IO to run concurrently
-        uasyncio.get_event_loop().create_task(timed_temp_logging())
+        asyncio.get_event_loop().create_task(timed_temp_logging())
         print("timed_temp_started")
-        uasyncio.get_event_loop().create_task(auto_valve_cycle())
+        asyncio.get_event_loop().create_task(auto_valve_cycle())
         print("webserver:")
         webserver.run(host=ip,port=8081)
     except Exception as e:
         print(e)
         webserver.shutdown()
-        uasyncio.get_event_loop().run_until_complete(final_delay())
+        asyncio.get_event_loop().run_until_complete(final_delay())
 
 run()
